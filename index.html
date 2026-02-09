@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Board Game Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://html2canvas.cypress.io/dist/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .game-board {
+            width: 800px;
+            height: 800px;
+            margin: 0 auto 40px;
+            position: relative;
+            background-color: #f8f9fa;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 40px;
+            overflow: hidden;
+        }
+        
+        .snake-path {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            right: 40px;
+            bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            gap: 5px;
+        }
+        
+        .cell {
+            background-color: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            overflow: hidden;
+            position: relative;
+            border: 2px solid #e9ecef;
+        }
+        
+        .cell:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+        
+        .cell.start {
+            background-color: #4CAF50;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .cell.finish {
+            background-color: #FF5722;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .cell-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+        
+        .cell-text {
+            padding: 8px;
+            word-break: break-word;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            background: linear-gradient(to right, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            background: linear-gradient(to right, #45a049, #4CAF50);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .instructions {
+            background-color: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .instructions h3 {
+            color: #2575fc;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .instructions ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .instructions li:before {
+            content: "•";
+            color: #4CAF50;
+            font-size: 24px;
+            position: absolute;
+            left: 0;
+            top: -3px;
+        }
+        
+        .counter {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .snake-line {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            right: 40px;
+            bottom: 40px;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .line-path {
+            fill: none;
+            stroke: #4CAF50;
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 10, 5;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Board Game Generator</h1>
+            <p>Create and download your custom board game as PDF</p>
+        </div>
+        
+        <div class="game-board" id="gameBoard">
+            <div class="snake-path" id="snakePath">
+                <!-- Клетки будут сгенерированы через JavaScript -->
+            </div>
+            
+            <!-- SVG для линии "улитки" -->
+            <svg class="snake-line" viewBox="0 0 800 800" preserveAspectRatio="none">
+                <path class="line-path" id="snakeLine" d=""/>
+            </svg>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="downloadPDF()">Download Game as PDF</button>
+        </div>
+        
+        <div class="instructions">
+            <h3>How to use this board game:</h3>
+            <ul>
+                <li>Start from the green "START" cell and follow the numbered path</li>
+                <li>When you land on an image cell, describe what you see or follow its theme</li>
+                <li>When you land on a task cell, complete the challenge</li>
+                <li>First player to reach the red "FINISH" cell wins!</li>
+                <li>Use your own tokens and rules for movement</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Массив изображений
+        const images = [
+            'Photos/Screenshot_20260206_162503_YouTube.jpg',
+            'Photos/Screenshot_20260206_162250_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162245_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162242_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162238_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162156_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162147_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162137_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162130_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_002029_YouTube.jpg',
+            'Photos/Screenshot_20260206_002017_YouTube.jpg'
+        ];
+        
+        // Массив заданий для клеток
+        const tasks = [
+            "Skip your next turn",
+            "Move forward 2 spaces",
+            "Go back 3 spaces",
+            "Take an extra turn",
+            "Switch places with the player in last place",
+            "Challenge another player to a rock-paper-scissors duel",
+            "Tell a joke. If no one laughs, go back 2 spaces",
+            "Name 5 countries in 10 seconds or miss a turn",
+            "Draw a card from the challenge deck",
+            "Move to the nearest image space",
+            "Freeze! Miss a turn while other players take two turns each",
+            "Ask the player on your right a trivia question",
+            "Sing a line from a song or move back 2 spaces",
+            "Make everyone laugh within 30 seconds or go back 3 spaces",
+            "Balance a book on your head until your next turn",
+            "Share an interesting fact. If others didn't know it, move forward 2 spaces",
+            "Do 10-second impression of an animal",
+            "Trade places with any player of your choice"
+        ];
+        
+        // Координаты для пути "улитки" (10x10 grid)
+        const spiralPath = [
+            // Начинаем с центра и движемся по спирали наружу
+            [5,5], [5,4], [4,4], [4,5], [4,6], [5,6], [6,6], [6,5], [6,4], [6,3],
+            [5,3], [4,3], [3,3], [3,4], [3,5], [3,6], [3,7], [4,7], [5,7], [6,7],
+            [7,7], [7,6], [7,5], [7,4], [7,3], [7,2], [6,2], [5,2], [4,2], [3,2],
+            [2,2], [2,3], [2,4], [2,5], [2,6], [2,7], [2,8], [3,8], [4,8], [5,8],
+            [6,8], [7,8], [8,8], [8,7], [8,6], [8,5], [8,4], [8,3], [8,2], [8,1],
+            [7,1], [6,1], [5,1], [4,1], [3,1], [2,1], [1,1], [1,2], [1,3], [1,4],
+            [1,5], [1,6], [1,7], [1,8], [1,9], [2,9], [3,9], [4,9], [5,9], [6,9],
+            [7,9], [8,9], [9,9], [9,8], [9,7], [9,6], [9,5], [9,4], [9,3], [9,2],
+            [9,1], [9,0], [8,0], [7,0], [6,0], [5,0], [4,0], [3,0], [2,0], [1,0],
+            [0,0], [0,1], [0,2], [0,3], [0,4], [0,5], [0,6], [0,7], [0,8], [0,9]
+        ];
+        
+        // Мы будем использовать только первые 40 клеток для нашего примера
+        const usedCells = 40;
+        const gameCells = [];
+        
+        // Создаем массив клеток с чередованием изображений и заданий
+        let imageIndex = 0;
+        let taskIndex = 0;
+        
+        for (let i = 0; i < usedCells; i++) {
+            let cellType, content;
+            
+            // Чередуем: изображение, задание, изображение, задание и т.д.
+            if (i % 3 === 0 || i % 3 === 1) {
+                // Задание
+                cellType = 'task';
+                content = tasks[taskIndex % tasks.length];
+                taskIndex++;
+            } else {
+                // Изображение
+                cellType = 'image';
+                content = images[imageIndex % images.length];
+                imageIndex++;
+            }
+            
+            // Первая клетка - START
+            if (i === 0) {
+                cellType = 'start';
+                content = 'START';
+            }
+            // Последняя клетка - FINISH
+            else if (i === usedCells - 1) {
+                cellType = 'finish';
+                content = 'FINISH';
+            }
+            
+            const coords = spiralPath[i];
+            gameCells.push({
+                type: cellType,
+                content: content,
+                row: coords[0],
+                col: coords[1],
+                number: i + 1
+            });
+        }
+        
+        // Генерируем игровое поле
+        const snakePath = document.getElementById('snakePath');
+        
+        gameCells.forEach(cell => {
+            const cellElement = document.createElement('div');
+            cellElement.className = `cell ${cell.type}`;
+            cellElement.style.gridRow = `${cell.row + 1}`;
+            cellElement.style.gridColumn = `${cell.col + 1}`;
+            
+            // Добавляем номер клетки
+            const counter = document.createElement('div');
+            counter.className = 'counter';
+            counter.textContent = cell.number;
+            cellElement.appendChild(counter);
+            
+            // Добавляем контент в клетку
+            if (cell.type === 'image') {
+                const img = document.createElement('img');
+                img.className = 'cell-image';
+                img.src = cell.content;
+                img.alt = `Game image ${cell.number}`;
+                cellElement.appendChild(img);
+            } else {
+                const text = document.createElement('div');
+                text.className = 'cell-text';
+                text.textContent = cell.content;
+                cellElement.appendChild(text);
+            }
+            
+            snakePath.appendChild(cellElement);
+        });
+        
+        // Создаем SVG путь для линии "улитки"
+        const line = document.getElementById('snakeLine');
+        let pathData = '';
+        
+        // Рассчитываем координаты центров клеток для пути
+        const cellSize = 72; // Примерный размер клетки в пикселях
+        const offset = 40;   // Отступ от края
+        
+        gameCells.forEach((cell, index) => {
+            // Центр клетки в координатах SVG
+            const x = offset + cell.col * cellSize + cellSize / 2;
+            const y = offset + cell.row * cellSize + cellSize / 2;
+            
+            if (index === 0) {
+                pathData = `M ${x} ${y}`;
+            } else {
+                pathData += ` L ${x} ${y}`;
+            }
+        });
+        
+        line.setAttribute('d', pathData);
+        
+        // Функция для скачивания PDF
+        function downloadPDF() {
+            const gameBoard = document.getElementById('gameBoard');
+            
+            // Используем html2canvas для создания изображения игрового поля
+            html2canvas(gameBoard, {
+                scale: 2,
+                backgroundColor: '#f8f9fa',
+                useCORS: true
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                const pdf = new jspdf.jsPDF({
+                    orientation: 'landscape',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                
+                // Размеры A4 в мм
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                
+                // Рассчитываем размер изображения для вставки на страницу
+                const imgWidth = pageWidth - 20; // Отступы по 10мм с каждой стороны
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                // Если изображение слишком высокое, уменьшаем его
+                let finalHeight = imgHeight;
+                if (imgHeight > pageHeight - 20) {
+                    finalHeight = pageHeight - 20;
+                    const finalWidth = (canvas.width * finalHeight) / canvas.height;
+                    pdf.addImage(imgData, 'JPEG', 10, 10, finalWidth, finalHeight);
+                } else {
+                    // Центрируем по вертикали
+                    const yOffset = (pageHeight - finalHeight) / 2;
+                    pdf.addImage(imgData, 'JPEG', 10, yOffset, imgWidth, finalHeight);
+                }
+                
+                // Добавляем заголовок
+                pdf.setFontSize(24);
+                pdf.setTextColor(37, 117, 252);
+                pdf.text('Custom Board Game', pageWidth / 2, 15, { align: 'center' });
+                
+                // Добавляем нижний колонтитул
+                pdf.setFontSize(10);
+                pdf.setTextColor(100, 100, 100);
+                pdf.text('Generated with Board Game Generator', pageWidth / 2, pageHeight - 10, { align: 'center' });
+                
+                // Сохраняем PDF
+                pdf.save('board-game.pdf');
+            });
+        }
+        
+        // Обработка ошибок загрузки изображений
+        document.addEventListener('DOMContentLoaded', function() {
+            const images = document.querySelectorAll('img');
+            images.forEach(img => {
+                img.onerror = function() {
+                    this.style.display = 'none';
+                    const parent = this.parentElement;
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'cell-text';
+                    errorMsg.textContent = `Image not found: ${this.alt}`;
+                    errorMsg.style.color = 'red';
+                    parent.appendChild(errorMsg);
+                };
+            });
+        });
+    </script>
+</body>
+</html>
