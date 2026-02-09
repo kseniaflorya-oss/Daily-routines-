@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Board Game - Fixed Version</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://html2canvas.cypress.io/dist/html2canvas.min.js"></script>
+    <style>
+        body { font-family: Arial; background: #f0f0f0; padding: 20px; }
+        #gameContainer { background: white; padding: 20px; border-radius: 10px; max-width: 900px; margin: auto; }
+        .board { display: grid; grid-template-columns: repeat(10, 70px); gap: 8px; margin: 30px 0; position: relative; }
+        .cell {
+            width: 70px; height: 70px; border: 2px solid #333; border-radius: 5px;
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; font-size: 10px; font-weight: bold; padding: 5px;
+            overflow: hidden; position: relative;
+        }
+        .cell.start { background: #4CAF50; color: white; }
+        .cell.finish { background: #FF5722; color: white; }
+        .cell img { width: 100%; height: 100%; object-fit: cover; }
+        .cell-number {
+            position: absolute; top: 2px; left: 2px;
+            background: rgba(0,0,0,0.7); color: white;
+            border-radius: 50%; width: 20px; height: 20px;
+            font-size: 11px; display: flex; align-items: center; justify-content: center;
+        }
+        #downloadBtn {
+            background: #2196F3; color: white; border: none; padding: 15px 30px;
+            font-size: 18px; border-radius: 5px; cursor: pointer; margin-top: 20px;
+        }
+        #downloadBtn:hover { background: #0b7dda; }
+        .path-line {
+            position: absolute; top: 0; left: 0; pointer-events: none;
+            stroke: #4CAF50; stroke-width: 4; fill: none;
+            stroke-dasharray: 5,5; opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <h1>🎲 Fixed Board Game</h1>
+        <div id="board" class="board"></div>
+        <button id="downloadBtn">⬇️ Download as PDF</button>
+    </div>
+
+    <script>
+        // === КОНФИГУРАЦИЯ ===
+        const images = [
+            'Photos/Screenshot_20260206_162503_YouTube.jpg',
+            'Photos/Screenshot_20260206_162250_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162245_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162242_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162238_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162156_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162147_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162137_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162130_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_002029_YouTube.jpg',
+            'Photos/Screenshot_20260206_002017_YouTube.jpg'
+        ];
+
+        const tasks = [
+            "Skip next turn", "Move forward 2", "Go back 3", "Extra turn",
+            "Switch places with last player", "Rock-Paper-Scissors duel",
+            "Tell a joke or go back 2", "Name 5 countries in 10s",
+            "Draw challenge card", "Move to nearest image", "Freeze for 1 turn"
+        ];
+
+        // === ГЕНЕРАЦИЯ ПОЛЯ (улитка 8x8) ===
+        const board = document.getElementById('board');
+        const totalCells = 40; // Уменьшено для компактности
+        let cells = [];
+
+        // Позиции для спирали
+        const spiral = [
+            [4,4],[4,3],[3,3],[3,4],[3,5],[4,5],[5,5],[5,4],[5,3],[5,2],
+            [4,2],[3,2],[2,2],[2,3],[2,4],[2,5],[2,6],[3,6],[4,6],[5,6],
+            [6,6],[6,5],[6,4],[6,3],[6,2],[6,1],[5,1],[4,1],[3,1],[2,1],
+            [1,1],[1,2],[1,3],[1,4],[1,5],[1,6],[1,7],[2,7],[3,7],[4,7]
+        ];
+
+        // Создаем клетки
+        for (let i = 0; i < totalCells; i++) {
+            const cell = document.createElement('div');
+            const pos = spiral[i];
+            
+            // Определяем тип клетки
+            let type = 'normal';
+            let content = '';
+            
+            if (i === 0) {
+                type = 'start';
+                content = 'START';
+            } else if (i === totalCells - 1) {
+                type = 'finish';
+                content = 'FINISH';
+            } else if (i % 3 === 0) {
+                // Картинка
+                const imgIndex = (i-1) % images.length;
+                content = `<img src="${images[imgIndex]}" alt="Game Image ${i}" onerror="this.parentElement.innerHTML='IMG ${i}'; this.parentElement.style.background='linear-gradient(45deg, #667eea, #764ba2); color:white;'">`;
+            } else {
+                // Задание
+                const taskIndex = (i-1) % tasks.length;
+                content = tasks[taskIndex];
+            }
+            
+            cell.className = `cell ${type}`;
+            cell.style.gridColumn = pos[0] + 1;
+            cell.style.gridRow = pos[1] + 1;
+            cell.innerHTML = `<div class="cell-number">${i+1}</div>${content}`;
+            
+            board.appendChild(cell);
+            cells.push({element: cell, pos: pos});
+        }
+
+        // === ГЕНЕРАЦИЯ PDF ===
+        document.getElementById('downloadBtn').addEventListener('click', async function() {
+            try {
+                const button = this;
+                button.disabled = true;
+                button.textContent = 'Generating PDF...';
+                
+                const canvas = await html2canvas(document.querySelector("#gameContainer"), {
+                    scale: 1.5,
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff'
+                });
+                
+                const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                const pdf = new jspdf.jsPDF({
+                    orientation: 'landscape',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const imgWidth = pageWidth - 20;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                pdf.addImage(imgData, 'JPEG', 10, 10, imgWidth, imgHeight);
+                pdf.setFontSize(16);
+                pdf.text('Board Game', pageWidth/2, pageHeight-10, {align: 'center'});
+                
+                pdf.save('board_game.pdf');
+                button.textContent = '✅ PDF Downloaded!';
+                
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                alert('Error generating PDF. Make sure you are running via http://localhost (not file://). See console for details.');
+            } finally {
+                setTimeout(() => {
+                    button.disabled = false;
+                    button.textContent = '⬇️ Download as PDF';
+                }, 2000);
+            }
+        });
+
+        // === РИСУЕМ ЛИНИЮ ПУТИ ===
+        function drawPath() {
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute('class', 'path-line');
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+            
+            let path = '';
+            cells.forEach((cell, idx) => {
+                const x = cell.pos[0] * 78 + 35;
+                const y = cell.pos[1] * 78 + 35;
+                if (idx === 0) path = `M ${x} ${y}`;
+                else path += ` L ${x} ${y}`;
+            });
+            
+            const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            pathEl.setAttribute('d', path);
+            svg.appendChild(pathEl);
+            board.appendChild(svg);
+        }
+        
+        drawPath();
+        console.log('Board game loaded! Check console for errors.');
+    </script>
+</body>
+</html>
