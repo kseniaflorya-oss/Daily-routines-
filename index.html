@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Routines PDF Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .description {
+            text-align: center;
+            color: #555;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .preview-area {
+            width: 794px; /* A4 width in pixels at 96 DPI */
+            height: 1123px; /* A4 height in pixels at 96 DPI */
+            padding: 40px;
+            background-color: white;
+            margin: 0 auto 30px;
+            border: 1px solid #ddd;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: auto;
+        }
+        
+        .two-column-layout {
+            display: flex;
+            height: 100%;
+            gap: 40px;
+        }
+        
+        .column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .image-container {
+            width: 100%;
+            min-height: 100px;
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background-color: #f8f9fa;
+        }
+        
+        .image-container img {
+            max-width: 100%;
+            max-height: 150px;
+            object-fit: contain;
+        }
+        
+        .phrase-container {
+            width: 100%;
+            min-height: 100px;
+            border: 2px dashed #2ecc71;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            background-color: #f8f9fa;
+            text-align: center;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .btn-download {
+            background: linear-gradient(to right, #3498db, #2c80b9);
+            color: white;
+        }
+        
+        .btn-download:hover {
+            background: linear-gradient(to right, #2980b9, #1f6396);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-shuffle {
+            background: linear-gradient(to right, #2ecc71, #27ae60);
+            color: white;
+        }
+        
+        .btn-shuffle:hover {
+            background: linear-gradient(to right, #27ae60, #219653);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.3);
+        }
+        
+        .btn i {
+            font-size: 18px;
+        }
+        
+        .instructions {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .instructions h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .instructions p {
+            color: #555;
+            line-height: 1.5;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        
+        .image-error {
+            color: #e74c3c;
+            font-size: 12px;
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+        }
+        
+        .loading.active {
+            display: flex;
+        }
+        
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Создание PDF...</p>
+    </div>
+    
+    <div class="container">
+        <h1><i class="fas fa-file-pdf"></i> Генератор PDF: Daily Routines</h1>
+        
+        <p class="description">
+            На этой странице вы можете создать PDF-файл с картинками и фразами на тему "Daily Routines". 
+            Картинки и фразы будут случайным образом распределены по двум колонкам.
+        </p>
+        
+        <div class="controls">
+            <button class="btn btn-shuffle" id="shuffleBtn">
+                <i class="fas fa-random"></i> Перемешать элементы
+            </button>
+            <button class="btn btn-download" id="downloadBtn">
+                <i class="fas fa-download"></i> Скачать PDF
+            </button>
+        </div>
+        
+        <div class="instructions">
+            <h3><i class="fas fa-info-circle"></i> Инструкция:</h3>
+            <p>Нажмите "Перемешать элементы", чтобы изменить порядок картинок и фраз. Затем нажмите "Скачать PDF", чтобы загрузить готовый файл. PDF будет создан в формате A4 с двумя колонками: слева - картинки, справа - фразы.</p>
+            <p><strong>Важно:</strong> Убедитесь, что все изображения находятся в папке "Photos" относительно этого HTML-файла.</p>
+        </div>
+    </div>
+    
+    <!-- Область предпросмотра -->
+    <div class="preview-area" id="previewArea">
+        <div class="two-column-layout">
+            <!-- Левая колонка с картинками -->
+            <div class="column" id="leftColumn">
+                <!-- Картинки будут добавлены с помощью JavaScript -->
+            </div>
+            
+            <!-- Правая колонка с фразами -->
+            <div class="column" id="rightColumn">
+                <!-- Фразы будут добавлены с помощью JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>Создано для задания по английскому языку: Daily Routines</p>
+    </div>
+
+    <script>
+        // Массив с локальными путями к картинкам
+        const images = [
+            "Photos/Screenshot_20260206_162503_YouTube.jpg",
+            "Photos/Screenshot_20260206_162250_YandexDisk.jpg",
+            "Photos/Screenshot_20260206_162245_YandexDisk.jpg",
+            "Photos/Screenshot_20260206_162242_YandexDisk.jpg",
+            "Photos/Screenshot_20260206_162238_YandexDisk.jpg",
+            "Photos/Screenshot_20260206_162156_YandexDisk.jpg",
+            "Photos/Screenshot_20260206_162147_YandexDisk.jpg",
+            "Photos/Screenshot_20260206_162137_YandexDisk.jpg",
+            "Photos/Screenshot_20260206_162130_YandexDisk.jpg",
+            "Photos/Screenshot_20260206_002029_YouTube.jpg",
+            "Photos/Screenshot_20260206_002017_YouTube.jpg"
+        ];
+        
+        // Массив с фразами
+        const phrases = [
+            "I wake up at seven o’clock in the morning every day.",
+            "I have a shower at seven o'clock.",
+            "Then I get dressed.",
+            "I have breakfast with my family at half past seven every day.",
+            "I go to school at eight o’clock.",
+            "I go home after school at four o’clock.",
+            "I have dinner in the evening.",
+            "I do my homework.",
+            "Then sometimes I go out and play.",
+            "At night I get undressed for bed.",
+            "And then I go to bed."
+        ];
+        
+        // DOM элементы
+        const leftColumn = document.getElementById('leftColumn');
+        const rightColumn = document.getElementById('rightColumn');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const loading = document.getElementById('loading');
+        
+        // Массив для хображений в base64
+        let imagesBase64 = [];
+        
+        // Функция для перемешивания массива (алгоритм Фишера-Йетса)
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+        
+        // Функция для загрузки изображений и конвертации в base64
+        async function loadImages() {
+            imagesBase64 = [];
+            
+            for (const imagePath of images) {
+                try {
+                    const base64 = await imageToBase64(imagePath);
+                    imagesBase64.push(base64);
+                } catch (error) {
+                    console.error(`Ошибка загрузки изображения ${imagePath}:`, error);
+                    // Добавляем placeholder вместо изображения
+                    imagesBase64.push(null);
+                }
+            }
+        }
+        
+        // Функция для конвертации изображения в base64
+        function imageToBase64(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'Anonymous'; // Для работы с локальными файлами
+                
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // Получаем base64
+                    const dataURL = canvas.toDataURL('image/jpeg');
+                    resolve(dataURL);
+                };
+                
+                img.onerror = () => {
+                    reject(new Error(`Не удалось загрузить изображение: ${url}`));
+                };
+                
+                img.src = url;
+            });
+        }
+        
+        // Функция для создания элементов картинок и фраз
+        function createElements() {
+            // Очищаем колонки
+            leftColumn.innerHTML = '';
+            rightColumn.innerHTML = '';
+            
+            // Перемешиваем массивы
+            const shuffledImages = shuffleArray(imagesBase64);
+            const shuffledPhrases = shuffleArray(phrases);
+            
+            // Создаем элементы для картинок
+            shuffledImages.forEach((imgBase64, index) => {
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'image-container';
+                
+                if (imgBase64) {
+                    const img = document.createElement('img');
+                    img.src = imgBase64;
+                    img.alt = `Daily routine image ${index + 1}`;
+                    imgContainer.appendChild(img);
+                } else {
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'image-error';
+                    errorMsg.textContent = 'Изображение не найдено';
+                    imgContainer.appendChild(errorMsg);
+                }
+                
+                leftColumn.appendChild(imgContainer);
+            });
+            
+            // Создаем элементы для фраз
+            shuffledPhrases.forEach(phrase => {
+                const phraseContainer = document.createElement('div');
+                phraseContainer.className = 'phrase-container';
+                phraseContainer.textContent = phrase;
+                rightColumn.appendChild(phraseContainer);
+            });
+        }
+        
+        // Функция для перемешивания с анимацией
+        function shuffleWithAnimation() {
+            // Добавляем класс для анимации ко всем элементам
+            const allImageContainers = document.querySelectorAll('.image-container');
+            const allPhraseContainers = document.querySelectorAll('.phrase-container');
+            
+            allImageContainers.forEach(container => {
+                container.classList.add('shuffled');
+            });
+            
+            allPhraseContainers.forEach(container => {
+                container.classList.add('shuffled');
+            });
+            
+            // Создаем новые элементы
+            createElements();
+            
+            // Удаляем класс анимации после завершения
+            setTimeout(() => {
+                const newImageContainers = document.querySelectorAll('.image-container');
+                const newPhraseContainers = document.querySelectorAll('.phrase-container');
+                
+                newImageContainers.forEach(container => {
+                    container.classList.remove('shuffled');
+                });
+                
+                newPhraseContainers.forEach(container => {
+                    container.classList.remove('shuffled');
+                });
+            }, 500);
+        }
+        
+        // Функция для скачивания PDF
+        async function downloadPDF() {
+            loading.classList.add('active');
+            
+            try {
+                // Загружаем изображения в base64
+                await loadImages();
+                
+                // Создаем PDF
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const margin = 20;
+                const columnWidth = (pageWidth - 3 * margin) / 2;
+                
+                // Перемешиваем массивы для PDF
+                const shuffledImages = shuffleArray(imagesBase64);
+                const shuffledPhrases = shuffleArray(phrases);
+                
+                let yPosition = margin;
+                const itemHeight = 35; // Высота одного элемента в мм
+                
+                // Добавляем элементы в PDF
+                for (let i = 0; i < shuffledImages.length; i++) {
+                    // Проверяем, нужно ли новую страницу
+                    if (yPosition + itemHeight > pageHeight - margin) {
+                        pdf.addPage();
+                        yPosition = margin;
+                    }
+                    
+                    // Левая колонка - изображения
+                    if (shuffledImages[i]) {
+                        try {
+                            // Добавляем рамку
+                            pdf.rect(margin, yPosition, columnWidth, itemHeight);
+                            
+                            // Добавляем изображение
+                            const imgProps = pdf.getImageProperties(shuffledImages[i]);
+                            const imgWidth = columnWidth - 10;
+                            const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+                            
+                            // Центрируем изображение в блоке
+                            const imgX = margin + 5;
+                            const imgY = yPosition + (itemHeight - imgHeight) / 2;
+                            
+                            if (imgHeight < itemHeight - 5) {
+                                pdf.addImage(shuffledImages[i], 'JPEG', imgX, imgY, imgWidth, imgHeight);
+                            } else {
+                                // Если изображение слишком высокое, масштабируем его
+                                const scaledHeight = itemHeight - 10;
+                                const scaledWidth = (imgProps.width * scaledHeight) / imgProps.height;
+                                const scaledX = margin + (columnWidth - scaledWidth) / 2;
+                                pdf.addImage(shuffledImages[i], 'JPEG', scaledX, yPosition + 5, scaledWidth, scaledHeight);
+                            }
+                        } catch (error) {
+                            console.error('Ошибка при добавлении изображения в PDF:', error);
+                            pdf.text('Изображение не загружено', margin + 5, yPosition + 15);
+                        }
+                    } else {
+                        pdf.rect(margin, yPosition, columnWidth, itemHeight);
+                        pdf.text('Изображение не найдено', margin + 5, yPosition + 15);
+                    }
+                    
+                    // Правая колонка - фразы
+                    pdf.rect(margin * 2 + columnWidth, yPosition, columnWidth, itemHeight);
+                    
+                    // Разбиваем текст на строки
+                    const phrase = shuffledPhrases[i];
+                    const lines = pdf.splitTextToSize(phrase, columnWidth - 10);
+                    
+                    // Центрируем текст вертикально
+                    const textHeight = lines.length * 5;
+                    const textY = yPosition + (itemHeight - textHeight) / 2 + 3;
+                    
+                    pdf.text(lines, margin * 2 + columnWidth + 5, textY);
+                    
+                    yPosition += itemHeight + 5;
+                }
+                
+                // Сохраняем PDF
+                pdf.save('daily-routines-exercise.pdf');
+                
+            } catch (error) {
+                console.error('Ошибка при создании PDF:', error);
+                alert('Произошла ошибка при создании PDF. Пожалуйста, попробуйте еще раз.');
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+        
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Показываем загрузку
+                loading.classList.add('active');
+                
+                // Загружаем изображения
+                await loadImages();
+                
+                // Создаем элементы
+                createElements();
+                
+                // Назначаем обработчики событий
+                shuffleBtn.addEventListener('click', shuffleWithAnimation);
+                downloadBtn.addEventListener('click', downloadPDF);
+                
+            } catch (error) {
+                console.error('Ошибка при инициализации:', error);
+                alert('Произошла ошибка при загрузке изображений. Пожалуйста, проверьте папку Photos.');
+            } finally {
+                loading.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>
