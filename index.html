@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Board Game - Direct PDF Generation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: white;
+            color: #333;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .preview {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 8px;
+            margin: 30px 0;
+            padding: 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            min-height: 500px;
+            position: relative;
+        }
+        .cell-preview {
+            width: 100%;
+            height: 70px;
+            border: 2px solid #95a5a6;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 9px;
+            font-weight: bold;
+            padding: 5px;
+            overflow: hidden;
+            position: relative;
+            background: white;
+        }
+        .cell-preview.start { background: #2ecc71; color: white; border-color: #27ae60; }
+        .cell-preview.finish { background: #e74c3c; color: white; border-color: #c0392b; }
+        .cell-preview.image { background: #3498db; color: white; border-color: #2980b9; }
+        .cell-preview.task { background: #f1c40f; color: #333; border-color: #f39c12; }
+        .cell-number {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .controls {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .btn {
+            background: linear-gradient(45deg, #2ecc71, #1abc9c);
+            color: white;
+            border: none;
+            padding: 18px 45px;
+            font-size: 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            background: linear-gradient(45deg, #27ae60, #16a085);
+        }
+        .btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .status {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #7f8c8d;
+            min-height: 20px;
+        }
+        .spiral-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            stroke: #e74c3c;
+            stroke-width: 3;
+            fill: none;
+            stroke-dasharray: 5,3;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎲 Board Game with Direct PDF Generation</h1>
+        
+        <div class="preview" id="previewContainer">
+            <!-- Preview cells will be generated here -->
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="generatePDF()" id="generateBtn">
+                ⬇️ Download Game as PDF
+            </button>
+            <div class="status" id="status"></div>
+        </div>
+        
+        <div style="text-align: center; color: #7f8c8d; margin-top: 30px; font-size: 14px;">
+            <p>The PDF will include all game cells with images and tasks in a spiral layout.</p>
+        </div>
+    </div>
+
+    <script>
+        // ========== CONFIGURATION ==========
+        const images = [
+            'Photos/Screenshot_20260206_162503_YouTube.jpg',
+            'Photos/Screenshot_20260206_162250_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162245_YandexDisk.jpg', 
+            'Photos/Screenshot_20260206_162242_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162238_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162156_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162147_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162137_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_162130_YandexDisk.jpg',
+            'Photos/Screenshot_20260206_002029_YouTube.jpg',
+            'Photos/Screenshot_20260206_002017_YouTube.jpg'
+        ];
+
+        // Simple tasks in English with Russian in brackets
+        const tasks = [
+            "Skip next turn (Пропусти ход)",
+            "Go back 2 spaces (Пройди на две клетки назад)", 
+            "Go back 3 spaces (Пройди на три клетки назад)",
+            "Move forward 2 spaces (Пройди на две клетки вперед)",
+            "Skip 2 turns (Пропусти два хода)",
+            "Go back to start (Вернись на старт)",
+            "Miss a turn (Пропусти ход)",
+            "Go back 1 space (Вернись на одну клетку назад)",
+            "Skip your next turn (Пропусти свой следующий ход)",
+            "Move forward 3 spaces (Пройди на три клетки вперед)",
+            "Lose a turn (Потеряй ход)",
+            "Go back 4 spaces (Вернись на четыре клетки назад)",
+            "Skip one turn (Пропусти один ход)",
+            "Move ahead 1 space (Пройди на одну клетку вперед)",
+            "Go back 2 spaces (Вернись на две клетки назад)"
+        ];
+
+        // Spiral coordinates for 8x8 board (40 cells)
+        const spiralCoords = [
+            [4,4],[4,3],[3,3],[3,4],[3,5],[4,5],[5,5],[5,4],[5,3],[5,2],
+            [4,2],[3,2],[2,2],[2,3],[2,4],[2,5],[2,6],[3,6],[4,6],[5,6],
+            [6,6],[6,5],[6,4],[6,3],[6,2],[6,1],[5,1],[4,1],[3,1],[2,1],
+            [1,1],[1,2],[1,3],[1,4],[1,5],[1,6],[1,7],[2,7],[3,7],[4,7]
+        ];
+
+        // Game cells data
+        const gameCells = [];
+        let imageIndex = 0;
+        let taskIndex = 0;
+
+        // ========== CREATE PREVIEW ==========
+        const previewContainer = document.getElementById('previewContainer');
+        
+        // Create SVG for spiral line
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("class", "spiral-line");
+        svg.setAttribute("viewBox", "0 0 1000 500");
+        previewContainer.appendChild(svg);
+
+        // Create preview cells
+        for (let i = 0; i < 40; i++) {
+            const coords = spiralCoords[i];
+            const cell = document.createElement('div');
+            const cellNumber = i + 1;
+            
+            // Determine cell type and content
+            let cellType = 'task';
+            let content = '';
+            
+            if (i === 0) {
+                cellType = 'start';
+                content = 'START';
+            } else if (i === 39) {
+                cellType = 'finish';
+                content = 'FINISH';
+            } else if (i % 3 === 0) {
+                // Image cell
+                cellType = 'image';
+                content = `Image ${Math.floor(i/3) + 1}`;
+                
+                const img = document.createElement('img');
+                img.src = images[imageIndex % images.length];
+                img.alt = content;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'cover';
+                img.onerror = function() {
+                    this.style.display = 'none';
+                    const fallback = document.createElement('div');
+                    fallback.style.background = 'linear-gradient(135deg, #3498db, #2c3e50)';
+                    fallback.style.width = '100%';
+                    fallback.style.height = '100%';
+                    fallback.style.display = 'flex';
+                    fallback.style.alignItems = 'center';
+                    fallback.style.justifyContent = 'center';
+                    fallback.style.color = 'white';
+                    fallback.style.fontSize = '10px';
+                    fallback.textContent = content;
+                    cell.appendChild(fallback);
+                };
+                cell.appendChild(img);
+                
+                imageIndex++;
+            } else {
+                // Task cell
+                content = tasks[taskIndex % tasks.length];
+                taskIndex++;
+                cell.textContent = content;
+            }
+            
+            // Set cell properties
+            cell.className = `cell-preview ${cellType}`;
+            cell.style.gridColumn = coords[0] + 1;
+            cell.style.gridRow = coords[1] + 1;
+            
+            // Add cell number
+            const numberDiv = document.createElement('div');
+            numberDiv.className = 'cell-number';
+            numberDiv.textContent = cellNumber;
+            cell.appendChild(numberDiv);
+            
+            previewContainer.appendChild(cell);
+            
+            // Store cell data
+            gameCells.push({
+                number: cellNumber,
+                type: cellType,
+                content: content,
+                col: coords[0],
+                row: coords[1],
+                x: coords[0] * 80 + 40,
+                y: coords[1] * 80 + 40
+            });
+        }
+
+        // Draw spiral line
+        let pathData = '';
+        gameCells.forEach((cell, idx) => {
+            if (idx === 0) {
+                pathData = `M ${cell.x},${cell.y}`;
+            } else {
+                pathData += ` L ${cell.x},${cell.y}`;
+            }
+        });
+        
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("d", pathData);
+        svg.appendChild(path);
+
+        // ========== PDF GENERATION ==========
+        async function generatePDF() {
+            const btn = document.getElementById('generateBtn');
+            const status = document.getElementById('status');
+            
+            btn.disabled = true;
+            btn.textContent = 'Generating PDF...';
+            status.textContent = 'Preparing game board...';
+            
+            try {
+                // Initialize PDF (A4 landscape)
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({
+                    orientation: 'landscape',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                
+                // Add title
+                pdf.setFontSize(24);
+                pdf.setTextColor(44, 62, 80);
+                pdf.text('Board Game', pageWidth / 2, 20, { align: 'center' });
+                
+                // Draw game board area
+                const boardWidth = pageWidth - 40;
+                const boardHeight = pageHeight - 60;
+                const cellSize = Math.min(boardWidth / 10, boardHeight / 8);
+                const startX = 20 + (boardWidth - cellSize * 10) / 2;
+                const startY = 40;
+                
+                // Draw cells
+                status.textContent = 'Drawing game cells...';
+                
+                for (const cell of gameCells) {
+                    const x = startX + cell.col * cellSize;
+                    const y = startY + cell.row * cellSize;
+                    
+                    // Set cell color based on type
+                    if (cell.type === 'start') {
+                        pdf.setFillColor(46, 204, 113); // Green
+                    } else if (cell.type === 'finish') {
+                        pdf.setFillColor(231, 76, 60); // Red
+                    } else if (cell.type === 'image') {
+                        pdf.setFillColor(52, 152, 219); // Blue
+                    } else {
+                        pdf.setFillColor(241, 196, 15); // Yellow
+                    }
+                    
+                    // Draw cell rectangle
+                    pdf.rect(x, y, cellSize, cellSize, 'F');
+                    pdf.rect(x, y, cellSize, cellSize, 'S');
+                    
+                    // Add cell number
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(255, 255, 255);
+                    pdf.text(cell.number.toString(), x + 3, y + 5);
+                    
+                    // Add cell content
+                    pdf.setFontSize(7);
+                    
+                    if (cell.type === 'start' || cell.type === 'finish') {
+                        pdf.setTextColor(255, 255, 255);
+                        pdf.text(cell.content, x + cellSize/2, y + cellSize/2, {
+                            align: 'center',
+                            maxWidth: cellSize - 6
+                        });
+                    } else if (cell.type === 'image') {
+                        pdf.setTextColor(255, 255, 255);
+                        const lines = pdf.splitTextToSize(`IMAGE ${Math.floor((cell.number-1)/3) + 1}`, cellSize - 6);
+                        pdf.text(lines, x + cellSize/2, y + cellSize/2, { align: 'center' });
+                    } else {
+                        pdf.setTextColor(0, 0, 0);
+                        const lines = pdf.splitTextToSize(cell.content, cellSize - 6);
+                        pdf.text(lines, x + cellSize/2, y + cellSize/2, { align: 'center' });
+                    }
+                }
+                
+                // Draw spiral path
+                pdf.setDrawColor(231, 76, 60);
+                pdf.setLineWidth(0.5);
+                pdf.setLineDashPattern([3, 2], 0);
+                
+                for (let i = 0; i < gameCells.length - 1; i++) {
+                    const cell1 = gameCells[i];
+                    const cell2 = gameCells[i + 1];
+                    
+                    const x1 = startX + cell1.col * cellSize + cellSize/2;
+                    const y1 = startY + cell1.row * cellSize + cellSize/2;
+                    const x2 = startX + cell2.col * cellSize + cellSize/2;
+                    const y2 = startY + cell2.row * cellSize + cellSize/2;
+                    
+                    pdf.line(x1, y1, x2, y2);
+                }
+                
+                // Add legend
+                pdf.setFontSize(10);
+                pdf.setTextColor(0, 0, 0);
+                pdf.text('Legend:', 20, pageHeight - 15);
+                
+                pdf.setFillColor(46, 204, 113);
+                pdf.rect(45, pageHeight - 18, 5, 5, 'F');
+                pdf.text('Start', 53, pageHeight - 15);
+                
+                pdf.setFillColor(231, 76, 60);
+                pdf.rect(75, pageHeight - 18, 5, 5, 'F');
+                pdf.text('Finish', 83, pageHeight - 15);
+                
+                pdf.setFillColor(52, 152, 219);
+                pdf.rect(105, pageHeight - 18, 5, 5, 'F');
+                pdf.text('Image Cell', 113, pageHeight - 15);
+                
+                pdf.setFillColor(241, 196, 15);
+                pdf.rect(140, pageHeight - 18, 5, 5, 'F');
+                pdf.text('Task Cell', 148, pageHeight - 15);
+                
+                // Add footer
+                pdf.setFontSize(8);
+                pdf.setTextColor(100, 100, 100);
+                pdf.text('Generated with jsPDF | Spiral Board Game', pageWidth/2, pageHeight - 5, { align: 'center' });
+                
+                // Save PDF
+                status.textContent = 'Finalizing PDF...';
+                pdf.save('board_game_spiral.pdf');
+                
+                status.textContent = '✅ PDF downloaded successfully!';
+                btn.textContent = '⬇️ Download Again';
+                
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                status.textContent = '❌ Error generating PDF. Check console.';
+                btn.textContent = '⬇️ Try Again';
+            } finally {
+                setTimeout(() => {
+                    btn.disabled = false;
+                    status.textContent = '';
+                }, 3000);
+            }
+        }
+
+        console.log('Board game loaded. Ready to generate PDF.');
+    </script>
+</body>
+</html>
